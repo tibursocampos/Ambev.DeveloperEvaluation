@@ -10,5 +10,5 @@ public class ItemCancelledNotification : INotification
     /// <summary>
     /// The unique identifier of the cancelled item
     /// </summary>
-    public Guid ItemId { get; set; }
+    public Guid SaleId { get; set; }
 }
