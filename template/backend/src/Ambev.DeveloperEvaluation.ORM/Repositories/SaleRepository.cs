@@ -1,4 +1,5 @@
-﻿using Ambev.DeveloperEvaluation.Domain.Entities;
+﻿using Ambev.DeveloperEvaluation.Common.Utils;
+using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
 
 using Microsoft.EntityFrameworkCore;
@@ -11,14 +12,6 @@ namespace Ambev.DeveloperEvaluation.ORM.Repositories;
 public class SaleRepository : ISaleRepository
 {
     private readonly DefaultContext _context;
-    private const string CustomerNameFilter = "CustomerName";
-    private const string SaleDateFilter = "SaleDate";
-    private const string SaleDateStartFilter = "SaleDateStart";
-    private const string SaleDateEndFilter = "SaleDateEnd";
-    private const string BranchNameFilter = "BranchName";
-    private const string IsCancelledFilter = "IsCancelled";
-    private const string AscendingOrder = "asc";
-    private const string DescendingOrder = "desc";
 
     /// <summary>
     /// Initializes a new instance of SaleRepository
@@ -56,6 +49,7 @@ public class SaleRepository : ISaleRepository
     {
         return await _context.Sales
             .Include(s => s.Items)
+            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
     }
 
@@ -70,7 +64,7 @@ public class SaleRepository : ISaleRepository
     /// <returns>A paginated list of sales</returns>
     public async Task<IEnumerable<Sale>> GetAllAsync(int page = 1,
                                                      int size = 10,
-                                                     string order = AscendingOrder,
+                                                     string order = Constants.AscendingOrder,
                                                      Dictionary<string, string>? filters = null,
                                                      CancellationToken cancellationToken = default)
     {
@@ -81,7 +75,7 @@ public class SaleRepository : ISaleRepository
             query = ApplyFilters(query, filters);
         }
 
-        query = order.Equals(DescendingOrder, 
+        query = order.Equals(Constants.DescendingOrder, 
                              StringComparison.CurrentCultureIgnoreCase) ? 
                              query.OrderByDescending(s => s.SaleDate) :
                              query.OrderBy(s => s.SaleDate);
@@ -140,40 +134,40 @@ public class SaleRepository : ISaleRepository
         {
             switch (filter.Key)
             {
-                case CustomerNameFilter:
+                case Constants.CustomerNameFilter:
                 if (!string.IsNullOrEmpty(filter.Value))
                 {
                     query = query.Where(s => s.CustomerName.Contains(filter.Value.Replace("*", "")));
                 }
                 break;
-                case SaleDateFilter:
+                case Constants.SaleDateFilter:
                 if (DateTime.TryParse(filter.Value, out var saleDate))
                 {
                     var convertedDate = DateTime.SpecifyKind(saleDate, DateTimeKind.Utc);
                     query = query.Where(s => s.SaleDate.Date == convertedDate.Date);
                 }
                 break;
-                case SaleDateStartFilter:
+                case Constants.SaleDateStartFilter:
                 if (DateTime.TryParse(filter.Value, out var saleDateStart))
                 {
                     var convertedDateStart = DateTime.SpecifyKind(saleDateStart, DateTimeKind.Utc);
                     query = query.Where(s => s.SaleDate.Date >= convertedDateStart.Date);
                 }
                 break;
-                case SaleDateEndFilter:
+                case Constants.SaleDateEndFilter:
                 if (DateTime.TryParse(filter.Value, out var saleDateEnd))
                 {
                     var convertedDateEnd = DateTime.SpecifyKind(saleDateEnd, DateTimeKind.Utc);
                     query = query.Where(s => s.SaleDate.Date <= convertedDateEnd.Date);
                 }
                 break;
-                case BranchNameFilter:
+                case Constants.BranchNameFilter:
                 if (!string.IsNullOrEmpty(filter.Value))
                 {
                     query = query.Where(s => s.BranchName.Contains(filter.Value.Replace("*", "")));
                 }
                 break;
-                case IsCancelledFilter:
+                case Constants.IsCancelledFilter:
                 if (bool.TryParse(filter.Value, out var isCancelled))
                 {
                     query = query.Where(s => s.IsCancelled == isCancelled);

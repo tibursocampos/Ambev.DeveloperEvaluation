@@ -4,6 +4,7 @@ using FluentValidation;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
 using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Application.Notifications.Sales.SaleModified;
+using Ambev.DeveloperEvaluation.Application.Notifications.Sales.ItemCancelled;
 using Microsoft.Extensions.Logging;
 
 namespace Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
@@ -43,6 +44,19 @@ public class UpdateSaleHandler : IRequestHandler<UpdateSaleCommand, UpdateSaleRe
     {
         _logger.LogInformation("Handling UpdateSaleCommand for Sale ID: {SaleId}", command.Id);
 
+        await ValidateCommandAsync(command, cancellationToken);
+
+        var existingSale = await GetExistingSaleAsync(command.Id, cancellationToken);
+        var updatedSale = UpdateSaleDetails(existingSale, command);
+
+        var result = await UpdateSaleAsync(updatedSale, cancellationToken);
+        await PublishNotificationAsync(existingSale, updatedSale, cancellationToken);
+
+        return result;
+    }
+
+    private async Task ValidateCommandAsync(UpdateSaleCommand command, CancellationToken cancellationToken)
+    {
         var validator = new UpdateSaleValidator();
         var validationResult = await validator.ValidateAsync(command, cancellationToken);
         if (!validationResult.IsValid)
@@ -51,47 +65,74 @@ public class UpdateSaleHandler : IRequestHandler<UpdateSaleCommand, UpdateSaleRe
             throw new ValidationException(validationResult.Errors);
         }
 
-        if (!await ValidateCommandAsync(command, cancellationToken))
+        if (command.Items.Count == 0)
         {
-            return default;
+            _logger.LogWarning("Sale with ID {SaleId} must contain at least one item", command.Id);
+            throw new ValidationException("Sale must contain at least one item.");
         }
 
+        if (!await _saleRepository.ExistsAndNotCancelledAsync(command.Id, cancellationToken))
+        {
+            _logger.LogWarning("Sale with ID {SaleId} not found or already cancelled", command.Id);
+            throw new ValidationException("Sale not found or already cancelled.");
+        }
+    }
+
+    private async Task<Sale> GetExistingSaleAsync(Guid saleId, CancellationToken cancellationToken)
+    {
+        var existingSale = await _saleRepository.GetByIdAsync(saleId, cancellationToken);
+        if (existingSale is null)
+        {
+            _logger.LogWarning("Sale with ID {SaleId} not found", saleId);
+            throw new KeyNotFoundException("Sale not found.");
+        }
+
+        return existingSale;
+    }
+
+    private Sale UpdateSaleDetails(Sale existingSale, UpdateSaleCommand command)
+    {
         var sale = _mapper.Map<Sale>(command);
         sale.ApplyDiscounts();
         sale.CalculateTotalAmount();
 
+        return sale;
+    }
+
+    private async Task<UpdateSaleResult?> UpdateSaleAsync(Sale sale, CancellationToken cancellationToken)
+    {
         var updated = await _saleRepository.UpdateAsync(sale, cancellationToken);
         if (!updated)
         {
-            _logger.LogWarning("Sale with ID {SaleId} not found during update", command.Id);
+            _logger.LogWarning("Sale with ID {SaleId} not found during update", sale.Id);
             return default;
         }
 
         var result = _mapper.Map<UpdateSaleResult>(sale);
         _logger.LogInformation("Sale with ID {SaleId} updated successfully", sale.Id);
 
-        await _publisher.Publish(new SaleModifiedNotification { SaleId = sale.Id }, cancellationToken);
-        _logger.LogInformation("Published SaleModifiedNotification for Sale ID: {SaleId}", sale.Id);
-
         return result;
     }
 
-    private async Task<bool> ValidateCommandAsync(UpdateSaleCommand command, CancellationToken cancellationToken)
+    private async Task PublishNotificationAsync(Sale existingSale, Sale updatedSale, CancellationToken cancellationToken)
     {
-        if (command.Items.Count == 0)
+        if (ItemsChanged(existingSale.Items, updatedSale.Items))
         {
-            _logger.LogWarning("Sale with ID {SaleId} must contain at least one item", command.Id);
-            return false;
+            await _publisher.Publish(new ItemCancelledNotification { SaleId = updatedSale.Id }, cancellationToken);
+            _logger.LogInformation("Published ItemCancelledNotification for Sale ID: {SaleId}", updatedSale.Id);
         }
-
-        if (!await _saleRepository.ExistsAndNotCancelledAsync(command.Id, cancellationToken))
+        else
         {
-            _logger.LogWarning("Sale with ID {SaleId} not found or already cancelled", command.Id);
-            return false;
+            await _publisher.Publish(new SaleModifiedNotification { SaleId = updatedSale.Id }, cancellationToken);
+            _logger.LogInformation("Published SaleModifiedNotification for Sale ID: {SaleId}", updatedSale.Id);
         }
+    }
 
-        return true;
+    private static bool ItemsChanged(List<SaleItem> existingItems, List<SaleItem> updatedItems)
+    {
+        var existingItemIds = existingItems.Select(i => i.Id).ToHashSet();
+        var updatedItemIds = updatedItems.Select(i => i.Id).ToHashSet();
+
+        return !existingItemIds.SetEquals(updatedItemIds);
     }
 }
-
-

@@ -4,6 +4,7 @@ using Ambev.DeveloperEvaluation.Application.Sales.DeleteSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
 using Ambev.DeveloperEvaluation.Application.Sales.GetSales;
 using Ambev.DeveloperEvaluation.Application.Sales.UpdateSale;
+using Ambev.DeveloperEvaluation.Common.Utils;
 using Ambev.DeveloperEvaluation.WebApi.Common;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.CreateSale;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.DeleteSale;
@@ -111,7 +112,7 @@ public class SalesController : BaseController
     public async Task<IActionResult> GetSales(CancellationToken cancellationToken, 
                                               [FromQuery] int page = 1, 
                                               [FromQuery] int size = 10, 
-                                              [FromQuery] string order = "asc", 
+                                              [FromQuery] string order = Constants.AscendingOrder, 
                                               [FromQuery] Dictionary<string, string>? filters = null)
     {
         var request = new GetSalesRequest { Page = page, Size = size, Order = order, Filters = filters };
