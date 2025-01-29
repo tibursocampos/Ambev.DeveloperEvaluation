@@ -68,6 +68,8 @@ public class Program
 
             app.UseBasicHealthChecks();
 
+            app.UseDefaultLogging();
+
             app.MapControllers();
 
             app.Run();
