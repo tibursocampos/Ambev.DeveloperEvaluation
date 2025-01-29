@@ -2,6 +2,8 @@
 using Ambev.DeveloperEvaluation.Domain.Common;
 using Ambev.DeveloperEvaluation.Domain.Validation;
 
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace Ambev.DeveloperEvaluation.Domain.Entities;
 
 /// <summary>
@@ -18,6 +20,7 @@ public class Sale : BaseEntity
     /// <summary>
     /// Gets or sets the date when the sale was made.
     /// </summary>
+    [Column(TypeName = "timestamp with time zone")]
     public DateTime SaleDate { get; set; }
 
     /// <summary>
@@ -34,6 +37,11 @@ public class Sale : BaseEntity
     /// Gets or sets the total sale amount.
     /// </summary>
     public decimal TotalAmount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the total sale amount before discounts.
+    /// </summary>
+    public decimal TotalAmountBeforeDiscount { get; set; }
 
     /// <summary>
     /// Gets or sets the branch ID (external identity).
@@ -58,12 +66,19 @@ public class Sale : BaseEntity
     /// <summary>
     /// Gets or sets the date and time when the sale was created.
     /// </summary>
+    [Column(TypeName = "timestamp with time zone")]
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
     /// Gets or sets the date and time of the last update to the sale's information.
     /// </summary>
+    [Column(TypeName = "timestamp with time zone")]
     public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Gets the total number of items in the sale.
+    /// </summary>
+    public int ItemCount => Items.Count;
 
     /// <summary>
     /// Initializes a new instance of the Sale class.
@@ -107,7 +122,8 @@ public class Sale : BaseEntity
     /// </summary>
     public void CalculateTotalAmount()
     {
-        TotalAmount = Items.Sum(item => item.Quantity);
+        TotalAmountBeforeDiscount = Items.Sum(item => item.Quantity * item.UnitPrice);
+        TotalAmount = Items.Sum(item => item.CalculateTotal());
     }
 
     /// <summary>

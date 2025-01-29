@@ -11,6 +11,14 @@ namespace Ambev.DeveloperEvaluation.ORM.Repositories;
 public class SaleRepository : ISaleRepository
 {
     private readonly DefaultContext _context;
+    private const string CustomerNameFilter = "CustomerName";
+    private const string SaleDateFilter = "SaleDate";
+    private const string SaleDateStartFilter = "SaleDateStart";
+    private const string SaleDateEndFilter = "SaleDateEnd";
+    private const string BranchNameFilter = "BranchName";
+    private const string IsCancelledFilter = "IsCancelled";
+    private const string AscendingOrder = "asc";
+    private const string DescendingOrder = "desc";
 
     /// <summary>
     /// Initializes a new instance of SaleRepository
@@ -29,8 +37,12 @@ public class SaleRepository : ISaleRepository
     /// <returns>The created sale</returns>
     public async Task<Sale> CreateAsync(Sale sale, CancellationToken cancellationToken = default)
     {
+        sale.SaleDate = DateTime.SpecifyKind(sale.SaleDate, DateTimeKind.Utc);
+        sale.CreatedAt = DateTime.SpecifyKind(sale.CreatedAt, DateTimeKind.Utc);
+
         await _context.Sales.AddAsync(sale, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+
         return sale;
     }
 
@@ -56,23 +68,24 @@ public class SaleRepository : ISaleRepository
     /// <param name="filters">Dictionary of filters to apply</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>A paginated list of sales</returns>
-    public async Task<IEnumerable<Sale>> GetAllAsync(int page = 1, int size = 10, string order = "asc", Dictionary<string, string>? filters = null, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Sale>> GetAllAsync(int page = 1,
+                                                     int size = 10,
+                                                     string order = AscendingOrder,
+                                                     Dictionary<string, string>? filters = null,
+                                                     CancellationToken cancellationToken = default)
     {
         IQueryable<Sale> query = _context.Sales.Include(s => s.Items);
 
-        // Apply filters
         if (filters != null)
         {
-            foreach (var filter in filters)
-            {
-                if (filter.Key == "CustomerName" && !string.IsNullOrEmpty(filter.Value))
-                {
-                    query = query.Where(s => s.CustomerName.Contains(filter.Value.Replace("*", "")));
-                }
-            }
+            query = ApplyFilters(query, filters);
         }
 
-        query = order.Equals("desc", StringComparison.CurrentCultureIgnoreCase) ? query.OrderByDescending(s => s.SaleDate) : query.OrderBy(s => s.SaleDate);
+        query = order.Equals(DescendingOrder, 
+                             StringComparison.CurrentCultureIgnoreCase) ? 
+                             query.OrderByDescending(s => s.SaleDate) :
+                             query.OrderBy(s => s.SaleDate);
+
         query = query.Skip((page - 1) * size).Take(size);
 
         return await query.ToListAsync(cancellationToken);
@@ -86,7 +99,12 @@ public class SaleRepository : ISaleRepository
     /// <returns>True if the sale was updated, false if not found</returns>
     public async Task<bool> UpdateAsync(Sale sale, CancellationToken cancellationToken = default)
     {
+        sale.SaleDate = DateTime.SpecifyKind(sale.SaleDate, DateTimeKind.Utc);
+        sale.CreatedAt = DateTime.SpecifyKind(sale.CreatedAt, DateTimeKind.Utc);
+        sale.UpdatedAt = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
+
         _context.Sales.Update(sale);
+
         return await _context.SaveChangesAsync(cancellationToken) > 0;
     }
 
@@ -98,11 +116,72 @@ public class SaleRepository : ISaleRepository
     /// <returns>True if the sale was deleted, false if not found</returns>
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var sale = await GetByIdAsync(id, cancellationToken);
-        if (sale == null)
-            return false;
+        var sale = await GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException($"Sale with ID {id} not found");
+        sale.Cancel();
+        _context.Sales.Update(sale);
 
-        _context.Sales.Remove(sale);
         return await _context.SaveChangesAsync(cancellationToken) > 0;
+    }
+
+    public async Task<bool> ExistsAndNotCancelledAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Sales.AnyAsync(s => s.Id == id && !s.IsCancelled, cancellationToken);
+    }
+
+    /// <summary>
+    /// Applies filters to the sales query
+    /// </summary>
+    /// <param name="query">The sales query</param>
+    /// <param name="filters">Dictionary of filters to apply</param>
+    /// <returns>The filtered sales query</returns>
+    private static IQueryable<Sale> ApplyFilters(IQueryable<Sale> query, Dictionary<string, string> filters)
+    {
+        foreach (var filter in filters)
+        {
+            switch (filter.Key)
+            {
+                case CustomerNameFilter:
+                if (!string.IsNullOrEmpty(filter.Value))
+                {
+                    query = query.Where(s => s.CustomerName.Contains(filter.Value.Replace("*", "")));
+                }
+                break;
+                case SaleDateFilter:
+                if (DateTime.TryParse(filter.Value, out var saleDate))
+                {
+                    var convertedDate = DateTime.SpecifyKind(saleDate, DateTimeKind.Utc);
+                    query = query.Where(s => s.SaleDate.Date == convertedDate.Date);
+                }
+                break;
+                case SaleDateStartFilter:
+                if (DateTime.TryParse(filter.Value, out var saleDateStart))
+                {
+                    var convertedDateStart = DateTime.SpecifyKind(saleDateStart, DateTimeKind.Utc);
+                    query = query.Where(s => s.SaleDate.Date >= convertedDateStart.Date);
+                }
+                break;
+                case SaleDateEndFilter:
+                if (DateTime.TryParse(filter.Value, out var saleDateEnd))
+                {
+                    var convertedDateEnd = DateTime.SpecifyKind(saleDateEnd, DateTimeKind.Utc);
+                    query = query.Where(s => s.SaleDate.Date <= convertedDateEnd.Date);
+                }
+                break;
+                case BranchNameFilter:
+                if (!string.IsNullOrEmpty(filter.Value))
+                {
+                    query = query.Where(s => s.BranchName.Contains(filter.Value.Replace("*", "")));
+                }
+                break;
+                case IsCancelledFilter:
+                if (bool.TryParse(filter.Value, out var isCancelled))
+                {
+                    query = query.Where(s => s.IsCancelled == isCancelled);
+                }
+                break;  
+            }
+        }
+
+        return query;
     }
 }

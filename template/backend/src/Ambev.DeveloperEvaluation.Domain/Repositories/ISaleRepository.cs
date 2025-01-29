@@ -49,4 +49,12 @@ public interface ISaleRepository
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if the sale was deleted, false if not found</returns>
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a sale with the specified unique identifier exists in the repository and is not cancelled
+    /// </summary>
+    /// <param name="id">The unique identifier of the sale to delete</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if the sale exists, false if not found</returns>
+    Task<bool> ExistsAndNotCancelledAsync(Guid id, CancellationToken cancellationToken = default);
 }

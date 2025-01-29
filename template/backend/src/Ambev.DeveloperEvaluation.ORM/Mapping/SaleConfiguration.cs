@@ -16,7 +16,9 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.Property(s => s.Id).HasColumnType("uuid").HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(s => s.CustomerId).IsRequired().HasColumnType("int");
-        builder.Property(s => s.SaleDate).IsRequired().HasColumnType("timestamp");
+        builder.Property(s => s.SaleDate).IsRequired().HasColumnType("timestamp with time zone");
+        builder.Property(s => s.CreatedAt).IsRequired().HasColumnType("timestamp with time zone");
+        builder.Property(s => s.UpdatedAt).HasColumnType("timestamp with time zone");
 
         // Configuração da relação com SaleItems
         builder.HasMany(s => s.Items)
@@ -24,4 +26,3 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
                .HasForeignKey(si => si.SaleId);
     }
 }
-
