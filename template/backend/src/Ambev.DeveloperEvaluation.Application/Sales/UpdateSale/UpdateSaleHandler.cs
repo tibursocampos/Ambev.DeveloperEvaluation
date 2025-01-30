@@ -50,6 +50,11 @@ public class UpdateSaleHandler : IRequestHandler<UpdateSaleCommand, UpdateSaleRe
         var updatedSale = UpdateSaleDetails(existingSale, command);
 
         var result = await UpdateSaleAsync(updatedSale, cancellationToken);
+        if(result is null)
+        {
+            return default;
+        }
+
         await PublishNotificationAsync(existingSale, updatedSale, cancellationToken);
 
         return result;

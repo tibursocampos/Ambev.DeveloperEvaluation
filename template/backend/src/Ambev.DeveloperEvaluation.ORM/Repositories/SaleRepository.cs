@@ -110,7 +110,10 @@ public class SaleRepository : ISaleRepository
     /// <returns>True if the sale was deleted, false if not found</returns>
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var sale = await GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException($"Sale with ID {id} not found");
+        var sale = await _context.Sales
+            .Include(s => s.Items)
+            .FirstOrDefaultAsync(s => s.Id == id, cancellationToken) ?? throw new InvalidOperationException($"Sale with ID {id} not found");
+
         sale.Cancel();
         _context.Sales.Update(sale);
 
