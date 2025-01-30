@@ -5,6 +5,9 @@
       "commandVersion": "1.0",
       "serviceActions": {
         "ambev.developerevaluation.webapi": "StartDebugging"
+      },
+      "environmentVariables": {
+        "ConnectionStrings__DefaultConnection": "Host=localhost;Port=5432;Database=developer_evaluation;Username=developer;Password=ev@luAt10n;Pooling=true;"
       }
     }
   }

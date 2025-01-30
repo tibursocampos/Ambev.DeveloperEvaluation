@@ -1,6 +1,8 @@
-﻿using Ambev.DeveloperEvaluation.Common.Validation;
-using Ambev.DeveloperEvaluation.WebApi.Common;
+﻿using Ambev.DeveloperEvaluation.Application.Common;
+using Ambev.DeveloperEvaluation.Common.Validation;
+
 using FluentValidation;
+
 using System.Text.Json;
 
 namespace Ambev.DeveloperEvaluation.WebApi.Middleware
