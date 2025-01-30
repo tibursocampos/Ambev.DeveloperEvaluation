@@ -84,3 +84,89 @@ This section includes links to the detailed documentation for the different API 
 This section describes the overall structure and organization of the project files and directories. 
 
 See [Project Structure](/.doc/project-structure.md)
+
+---
+## Features and Improvements
+
+- **Search Filters for Sales**: Implemented flexible search filters to retrieve sales based on different criteria, such as customer name, branch, sale date range, and cancellation status. These filters allow a refined search experience for the users.
+  
+- **Sale Details by ID**: The complete sale details, including all items, are only fetched when querying by ID to reduce payload size. When fetching multiple sales, item details are omitted to avoid overloading the response payload.
+
+- **Pagination in Search Endpoint**: Integrated existing pagination features for the sales search endpoint to ensure efficient data retrieval and prevent performance bottlenecks, especially when dealing with large datasets.
+
+- **Discount Business Logic with Strategy Pattern**: Applied business rules for discounts (10% for 4+ items, 20% for 10-20 items) using the Strategy pattern. This ensures compliance with SOLID principles, making the discount logic easy to modify or extend in the future.
+
+- **Unit and Integration Tests**: Executed both unit and integration tests to ensure the application's correctness and stability, validating the key functionalities and interactions.
+
+- **Optional RabbitMQ Setup for Messaging**: Though not mandatory, configured RabbitMQ to handle messaging events. Sale-related events, such as "SaleCreated", "SaleModified", and "SaleCancelled", are published, providing better insight into the application's operation and allowing further integrations.
+
+- **Utilization of MediatR**: Leveraged MediatR's Command, Query, Publisher, and Notification features for better event handling and separation of concerns. This ensures a clean architecture and facilitates scalability by decoupling different parts of the application.
+
+---
+## How to Run the Application
+
+### 1. Clone the Repository
+
+```sh
+git clone https://github.com/tibursocampos/Ambev.DeveloperEvaluation.git
+cd Ambev.DeveloperEvaluation
+```
+
+### 2. Running with Docker Compose (Recommended)
+
+Navigate to the backend directory:
+
+```sh
+cd template/backend
+```
+
+Run the following command to start the services:
+
+```sh
+docker compose up -d
+```
+
+### 3. Applying Database Migrations
+
+After starting the services, apply the migrations:
+
+```sh
+dotnet ef database update --project src/Ambev.DeveloperEvaluation.ORM --startup-project src/Ambev.DeveloperEvaluation.WebApi --context DefaultContext --connection "Host=localhost;Port=5432;Database=developer_evaluation;Username=developer;Password=ev@luAt10n;Pooling=true;"
+```
+
+If you are using Visual Studio, open the **Package Manager Console** and run the same command above.
+
+### 4. Running in Debug Mode (Optional)
+
+If you want to run the application in debug mode:
+
+- Open the project in **Visual Studio**.
+- Select **Docker Compose** as the startup option.
+- Run the application.
+- Run command on Package Manager Console of preview section to apply migrations
+
+### 5. Accessing the API Documentation
+
+Once the application is running, you can access the API documentation via Swagger:
+
+```
+https://localhost:8081/swagger/index.html
+```
+
+### 6. Accessing RabbitMQ
+
+If you want to access RabbitMQ to monitor messages arriving in the queue, visit the following link:
+```
+http://localhost:15672/#/queues/
+```
+
+Credentials for Access:
+- Username: developer
+- Password: ev@luAt10n
+
+Queue Name:
+- SalesEvent
+
+### 7. API Documentation
+
+For detailed API specifications, check the [Sales API Documentation](/.doc/sales-api.md).
