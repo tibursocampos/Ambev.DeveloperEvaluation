@@ -170,3 +170,7 @@ Queue Name:
 ### 7. API Documentation
 
 For detailed API specifications, check the [Sales API Documentation](/.doc/sales-api.md).
+
+### 8. Payload examples for create Sales
+
+To help create sales for testing, examples in [Create Sales Payload](/.doc/sales-payload.md).
